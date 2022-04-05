@@ -1,0 +1,41 @@
+---
+title: "Mouse project"
+author: "Shicong Wang"
+date: "4/5/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+
+```
+
+
+## EDA
+
+```{r}
+install.packages("R.matlab")
+```
+
+## Including Plots
+
+```{r}
+library(R.matlab)
+#directory <-getwd()
+#directory
+
+#behavior <- readMat("binned_behavior.mat")
+#zscore<- readMat("binned_zscore.mat")
+
+dir_409_behavior <- readMat("Dir_Interact/608034_409/Day_1/Trial_002_0/binned_behavior.mat") %>% as.data.frame()
+dir_409_zscore <- readMat("Dir_Interact/608034_409/Day_1/Trial_002_0/binned_zscore.mat") %>% as.data.frame()
+
+
+#df_behavior2<- as.data.frame(do.call(rbind, dir_409_behavior))
+#df_zscore2<- as.data.frame(do.call(rbind, dir_409_zscore))
+
+
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
