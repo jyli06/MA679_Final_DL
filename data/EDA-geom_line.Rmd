@@ -1,0 +1,112 @@
+---
+title: "Mouse project"
+author: "Shicong Wang"
+date: "4/5/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(ggplot2)
+library(R.matlab)
+library(reshape2)
+library(ggplot2)
+library(hrbrthemes)
+library(dplyr)
+library(tidyr)
+library(viridis)
+library(RColorBrewer)
+
+```
+
+
+## EDA
+
+```{r}
+install.packages("R.matlab")
+install.packages("devtools")
+install.packages("Rcpp")
+library(devtools)
+install_github("petermeissner/wikipediatrend")
+install_github("twitter/AnomalyDetection")
+#Loading the libraries
+library(Rcpp)
+library(wikipediatrend)
+library(AnomalyDetection)
+```
+
+## Including Plots
+
+```{r}
+#directory <-getwd()
+#directory
+
+behavior <- readMat("binned_behavior.mat") %>% as.data.frame()
+zscore<- readMat("binned_zscore.mat") %>% as.data.frame()
+
+dir_409_zscore <- readMat("Dir_Interact/608034_409/Day_1/Trial_002_0/binned_zscore.mat") %>% as.data.frame()
+dir_409_behavior <- readMat("Dir_Interact/608034_409/Day_1/Trial_002_0/binned_behavior.mat") 
+dir_409_behavior <- as.data.frame(t(dir_409_behavior$binned.behavior))
+
+summary(dir_409_zscore )
+
+dir_409_behavior$label<- c(1,2)
+
+```
+
+```{r}
+# line
+dir_409_zscore$mean<- rowMeans(dir_409_zscore)
+ggplot(dir_409_zscore) + 
+  geom_line(aes(x=1:4789, y=mean,color=mean))
+
+# bar plot
+v1_count_01<- as.data.frame(table(dir_409_behavior[,1]))
+v2_count_01<- as.data.frame(table(dir_409_behavior[,2]))
+count_01<- merge(v1_count_01, v2_count_01, by = "Var1")
+colnames(count_01)<- c("outcome","interaction","single")
+count_01<- melt(count_01)
+colnames(count_01)<- c("outcome", "status","count")
+count_01<- count_01 %>% group_by(status) %>%
+  mutate(Freq2 = cumsum(count), # Calculating position of stacked Freq
+         percent = 100* count/sum(count),
+         prop = count/sum(count)) # Calculating proportion of Freq
+
+count_01$label = paste0(sprintf("%.2f", count_01$percent), "%")
+
+
+#ggplot(count_01) +
+    #geom_bar(aes(x=outcome, y=count, fill=status),stat="identity") +
+    #geom_text(aes(x=outcome, y=count,label = label), position = position_stack(vjust = 0.5), size = 4, color="white")+
+    #geom_text(aes(x=outcome, y=count,label = count), position = position_stack(vjust = 0.3), size = 4, color="white")+
+    #scale_y_continuous(labels = scales::percent, limits = c(0,1))+
+    #ylab("Frequency")
+
+ggplot(count_01) +
+    geom_bar(aes(x=status, y=count, fill=outcome),stat="identity") +
+    #geom_text(aes(x=status, y=count,label = label), position = position_stack(vjust = 0.2), size = 3, color="white")+
+    #geom_text(aes(x=status, y=count,label = count), position = position_stack(vjust = 0.3), size = 3, color="white")+
+    #scale_y_continuous(labels = scales::percent, limits = c(0,1))+
+    ylab("Frequency")
+    
+```
+
+```{r}
+# combine 
+colnames(dir_409_behavior) = c("interactive", "single")
+dir_409_combine<- dir_409_behavior
+dir_409_combine$zscore<- dir_409_zscore$mean
+dir_409_combine$label<- ifelse(dir_409_combine$single == 0 & dir_409_combine$interactive == 0, "00", 
+                               ifelse(dir_409_combine$interactive == 0 & dir_409_combine$single == 1, "01", "10"))
+
+ggplot(dir_409_combine) + 
+  geom_line(aes(x=1:4789, y=zscore,group = 1,color=label))+
+  scale_color_brewer(palette = "Accent")+
+    theme_ipsum() +
+    ylab("zscore") +
+    xlab("time")+
+    ggtitle("The zscores of multiple behaviors through time from mouse 409")
+
+```
+
