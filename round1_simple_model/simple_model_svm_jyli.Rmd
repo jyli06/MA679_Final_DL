@@ -1,0 +1,64 @@
+---
+title: "PCA_SVM"
+author: "Jinyu"
+date: "4/13/2022"
+output: html_document
+---
+
+
+
+```{r setup, include=FALSE}
+library(ggplot2)
+library(R.matlab)
+library(tidyverse)
+library(e1071)
+```
+
+
+```{r}
+mouse_name_zero_maze = list.files(path = "data/Zero_Maze/", pattern="*_*")
+mouse_name_zero_maze
+file_path_zscore = paste0("data/Zero_Maze/",mouse_name_zero_maze[1],"/Day_1/Trial_001_0/binned_zscore.mat")
+
+file_path_behavior = paste0("data/Zero_Maze/",mouse_name_zero_maze[1],"/Day_1/Trial_001_0/binned_behavior.mat")
+
+print(file_path_behavior)
+
+zscore_409 = readMat(file_path_zscore) %>% as.data.frame()
+behavior_409 = readMat(file_path_behavior) %>% as.data.frame() %>% t() %>% as.data.frame()
+
+head(behavior_409)
+
+df_409 <- cbind(zscore_409,behavior_409)
+
+
+df_409_no_00 <- df_409 %>% filter(!(V1 ==0 & V2 == 0))
+```
+
+
+```{r}
+
+df_409_1 <- df_409_no_00[1:(ncol(df_409_no_00)-1)]
+
+df_409_1[ncol(df_409_1)] <- as.factor(df_409_1[ncol(df_409_1)])
+
+num_0 <- df_409_1 %>% filter(V1 == 0) %>% nrow()
+num_1 <- df_409_1 %>% filter(V1 == 1) %>% nrow()
+
+train_index = c(1:floor(nrow(df_409_1)/10))
+
+train_409 = df_409_1[train_index,] %>% filter(V1 == 1) %>% nrow()
+
+floor(num_0/10)
+floor(num_1/10)
+
+sample.int()
+# split train and 
+```
+
+```{r}
+svm_fit = svm(V1~., data=df_409_1, kernel="linear", cost=10, scale = F)
+
+plot(svm_fit, df_409_1)
+```
+
