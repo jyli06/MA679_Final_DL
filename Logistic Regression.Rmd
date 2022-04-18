@@ -22,8 +22,8 @@ library(RColorBrewer)
 ## read data
 
 ```{r}
-zm_409_zscore <- readMat("Zero_Maze/608034_409/Day_1/Trial_001_0/binned_zscore.mat") %>% as.data.frame()
-zm_409_behavior <- readMat("Zero_Maze/608034_409/Day_1/Trial_001_0/binned_behavior.mat") 
+zm_409_zscore <- readMat("data/Zero_Maze/608034_409/Day_1/Trial_001_0/binned_zscore.mat") %>% as.data.frame()
+zm_409_behavior <- readMat("data/Zero_Maze/608034_409/Day_1/Trial_001_0/binned_behavior.mat") 
 zm_409_behavior <- as.data.frame(t(zm_409_behavior$binned.behavior))
 colnames(zm_409_behavior)<- c("Closed", "Open")
 
