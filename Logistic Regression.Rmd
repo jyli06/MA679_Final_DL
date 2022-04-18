@@ -1,0 +1,321 @@
+---
+title: "preliminary analysis"
+author: "Shicong Wang"
+date: "4/13/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(ggplot2)
+library(R.matlab)
+library(reshape2)
+library(ggplot2)
+library(hrbrthemes)
+library(dplyr)
+library(tidyr)
+library(viridis)
+library(RColorBrewer)
+```
+
+## read data
+
+```{r}
+zm_409_zscore <- readMat("Zero_Maze/608034_409/Day_1/Trial_001_0/binned_zscore.mat") %>% as.data.frame()
+zm_409_behavior <- readMat("Zero_Maze/608034_409/Day_1/Trial_001_0/binned_behavior.mat") 
+zm_409_behavior <- as.data.frame(t(zm_409_behavior$binned.behavior))
+colnames(zm_409_behavior)<- c("Closed", "Open")
+
+zm_409_combine<- cbind(zm_409_behavior, zm_409_zscore)
+
+zm_409_combine<- zm_409_combine[ !zm_409_combine$Closed == 0 | !zm_409_combine$Open == 0, ]
+
+```
+
+## PCA
+
+```{r}
+install.packages("factoextra")
+```
+
+```{r}
+zm_409_behavior<- zm_409_combine[, -c(1,2)]
+zm_pca <- prcomp(train[, -c(1,2)], scale = TRUE)
+
+zm_pca$
+summary(zm_pca)
+attributes(zm_pca)
+
+zm_pca$center  
+zm_pca$scale
+
+zm_pca$rotation[,1:10]
+
+pca2 <- factanal(zm_409_behavior, factors = 5, rotation="varimax", scores="regression")
+pca2$loadings
+
+```
+
+```{r}
+library(factoextra)
+
+fviz_eig(zm_pca,addlabels=TRUE, hjust = -0.3)
+
+fviz_pca_ind(zm_pca,
+             col.ind = "cos2", # Color by the quality of representation
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+             repel = TRUE     # Avoid text overlapping
+             )
+
+fviz_pca_var(zm_pca,
+             col.var = "contrib", # Color by contributions to the PC
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+             repel = TRUE     # Avoid text overlapping
+             )
+
+fviz_pca_biplot(zm_pca, repel = TRUE,
+                col.var = "#2E9FDF", # Variables color
+                col.ind = "#696969"  # Individuals color
+                )
+
+groups <- as.factor(zm_409_combine$Closed)
+fviz_pca_ind(zm_pca,
+             col.ind = groups, # color by groups
+             palette = c("#00AFBB",  "#FC4E07"),
+             addEllipses = TRUE, # Concentration ellipses
+             ellipse.type = "confidence",
+             legend.title = "Groups",
+             repel = TRUE
+             )
+
+get_eig(zm_pca)
+
+```
+
+```{r}
+library(magrittr) # for pipe %>%
+library(dplyr)   # everything else
+# 1. Individual coordinates
+res.ind <- get_pca_ind(zm_pca)
+# 2. Coordinate of groups
+coord.groups <- res.ind$coord %>%
+  as_data_frame() %>%
+  select(Dim.1, Dim.2) %>%
+  mutate(competition = groups) %>%
+  group_by(competition) %>%
+  summarise(
+    Dim.1 = mean(Dim.1),
+    Dim.2 = mean(Dim.2)
+    )
+coord.groups
+
+res.ind$cos2
+
+```
+
+```{r}
+library(factoextra)
+# Eigenvalues
+eig.val <- get_eigenvalue(zm_pca)
+eig.val
+  
+# Results for Variables
+res.var <- get_pca_var(zm_pca)
+res.var$coord          # Coordinates
+res.var$contrib        # Contributions to the PCs
+res.var$cos2           # Quality of representation 
+
+# Results for individuals
+res.ind <- get_pca_ind(zm_pca)
+res.ind$coord          # Coordinates
+res.ind$contrib        # Contributions to the PCs
+res.ind$cos2           # Quality of representation 
+```
+
+### PCA results for variable
+
+```{r}
+## sqrt of eigenvalues -- sdev
+## loadings -- rotation
+
+var_coord_func <- function(loadings, comp.sdev){
+  loadings*comp.sdev
+}
+
+# Compute Coordinates
+loadings <- zm_pca$rotation
+sdev <- zm_pca$sdev
+var.coord <- t(apply(loadings, 1, var_coord_func, sdev)) 
+head(var.coord[, 1:10])
+
+# Compute Cos2
+var.cos2 <- var.coord^2
+head(var.cos2[, 1:10])
+
+# Compute contributions
+comp.cos2 <- apply(var.cos2, 2, sum)
+contrib <- function(var.cos2, comp.cos2){var.cos2*100/comp.cos2}
+var.contrib <- t(apply(var.cos2,1, contrib, comp.cos2))
+head(var.contrib[, 1:10])
+
+
+var.contrib[, 1:10]
+
+pr_var <- sdev^2
+prop_varex <- pr_var/sum(pr_var)
+plot(var.contrib, xlab = "Principal Component",
+             ylab = "Proportion of Variance Explained",
+             type = "b")
+
+
+```
+
+### PCA results for individuals
+
+```{r}
+# Coordinates of individuals
+ind.coord <- zm_pca$x
+head(ind.coord[, 1:10])
+
+# Cos2 of individuals
+# 1. square of the distance between an individual and the
+# PCA center of gravity
+center <- zm_pca$center
+scale<- zm_pca$scale
+getdistance <- function(ind_row, center, scale){
+  return(sum(((ind_row-center)/scale)^2))
+  }
+d2 <- apply(zm_409_behavior,1,getdistance, center, scale)
+
+# 2. Compute the cos2. The sum of each row is 1
+cos2 <- function(ind.coord, d2){return(ind.coord^2/d2)}
+ind.cos2 <- apply(ind.coord, 2, cos2, d2)
+head(ind.cos2[, 1:10])
+
+
+# Contributions of individuals
+contrib <- function(ind.coord, comp.sdev, n.ind){
+  100*(1/n.ind)*ind.coord^2/comp.sdev^2
+}
+ind.contrib <- t(apply(ind.coord, 1, contrib, 
+                       zm_pca$sdev, nrow(ind.coord)))
+head(ind.contrib[, 1:10])
+```
+
+
+## Logstic regression
+
+```{r}
+set.seed(1)
+sample <- sample(c(TRUE, FALSE), nrow(zm_409_combine), replace=TRUE, prob=c(0.7,0.3))
+train <- zm_409_combine[sample, ]
+test <- zm_409_combine[!sample, ]
+```
+
+```{r}
+library(caret)
+library(InformationValue)
+
+model1 <- glm(Closed ~ ., family = "binomial", data = train[,-2])
+summary(model1)
+
+
+#use model to predict probability of default
+predicted <- predict(model1, test, type="response")
+
+#find optimal cutoff probability to use to maximize accuracy
+optimal <- optimalCutoff(test$Closed, predicted)[1]
+
+#create confusion matrix
+confusionMatrix(test$Closed, predicted)
+
+
+#calculate sensitivity
+sensitivity(test$Closed, predicted)
+
+#calculate specificity
+specificity(test$Closed, predicted)
+
+
+#calculate total misclassification error rate
+misClassError(test$Closed, predicted, threshold=optimal)
+
+
+```
+
+```{r}
+library(arm)
+library(MASS)
+library(performance)
+
+binnedplot(fitted(model1), 
+           residuals(model1, type = "response"), 
+           xlab = "Expected Values", 
+           ylab = "Average residual", 
+           main = "Binned residual plot",
+           cex.pts = 0.8, 
+           col.pts = 1, 
+           col.int = "gray")
+
+check_model(model1)
+```
+
+```{r}
+
+zm_pca$x
+data <- cbind(zm_409_combine$Closed, zm_pca$x)
+data <- as.data.frame(data)
+
+model2 <- glm(V1 ~ PC1 + PC2 + PC3 + PC4 + PC5 + PC6 + PC7 + PC8+ PC9 + PC10 , data = data, family=binomial)
+summary(model2)
+
+checkit <- fitted(model2)
+checkit <- cbind(zm_409_combine$Closed, checkit)
+checkit <- as.data.frame(checkit)
+#head(checkit %>% filter(zm_409_combine$Closed == 1), 20)
+checkit$predict <-  ifelse(checkit$checkit > 0.5, 1, 0)
+
+
+optimal2 <- optimalCutoff(checkit$V1, checkit$predict)[1]
+confusionMatrix(checkit$V1, checkit$predict)
+
+misClassError(checkit$V1, checkit$predict, threshold=optimal2)
+
+```
+
+```{r}
+#zm_pca$x
+#data <- cbind(train$Closed, zm_pca$x)
+#data <- as.data.frame(data)
+
+#model2 <- glm(V1 ~ PC1 + PC2 + PC3 + PC4 + PC5 + PC6 + PC7 + PC8+ PC9 + PC10 , data = data, family=binomial)
+#summary(model2)
+
+#zm_pca_test <- prcomp(test[, -c(1,2)], scale = TRUE)
+
+
+#test_pca<- cbind(test$Closed, zm_pca_test$x) %>% as.data.frame()
+
+#predicted2 <- predict(model2, test_pca, type="response")
+
+#optimal2 <- optimalCutoff(test$Closed, predicted2)[1]
+
+#create confusion matrix
+#confusionMatrix(test$Closed, predicted2)
+
+
+#calculate sensitivity
+#sensitivity(test$Closed, predicted2)
+
+#calculate specificity
+#specificity(test$Closed, predicted2)
+
+
+#calculate total misclassification error rate
+#misClassError(test$Closed, predicted2, threshold=optimal2)
+
+
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
