@@ -1,0 +1,296 @@
+---
+title: "Molly"
+author: "Tao He"
+date: "4/17/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+pacman::p_load(
+ggplot2,
+dplyr,
+reshape2,
+Hmisc,
+R.matlab,
+arsenal,
+GGally,
+xts,
+dygraphs,
+base,
+RColorBrewer,
+class,
+scales,
+psych,
+randomcoloR
+)
+```
+
+# Abstract
+
+# Introduction
+
+# Methods
+
+## Data Cleaning and Processing
+
+```{r echo=FALSE, include=FALSE}
+# Direct Interaction
+# Mouse 409, cell 71, obs(times) 4789
+dir_409_behavior <- readMat("data/Dir_Interact/608034_409/Day_1/Trial_002_0/binned_behavior.mat") 
+dir_409_behavior <- as.data.frame(t(dir_409_behavior$binned.behavior))
+
+dir_409_zscore <- readMat("data/Dir_Interact/608034_409/Day_1/Trial_002_0/binned_zscore.mat") %>% as.data.frame()
+dir_409 <- cbind(dir_409_behavior, dir_409_zscore)
+
+
+# Mouse 412, cell 82, obs(times) 3300
+dir_412_behavior <- readMat("data/Dir_Interact/608102_412/Day_1/Trial_002_0/binned_behavior.mat") 
+dir_412_behavior <- as.data.frame(t(dir_412_behavior$binned.behavior))
+
+dir_412_zscore <- readMat("data/Dir_Interact/608102_412/Day_1/Trial_002_0/binned_zscore.mat") %>% as.data.frame()
+dir_412 <- cbind(dir_412_behavior, dir_412_zscore)
+
+# Mouse 414, cell 45, obs(times) 3337
+dir_414_behavior <- readMat("data/Dir_Interact/608102_414/Day_1/Trial_002_0/binned_behavior.mat") 
+dir_414_behavior <- as.data.frame(t(dir_414_behavior$binned.behavior))
+
+dir_414_zscore <- readMat("data/Dir_Interact/608102_414/Day_1/Trial_002_0/binned_zscore.mat") %>% as.data.frame()
+dir_414 <- cbind(dir_414_behavior, dir_414_zscore)
+
+# Mouse 416, cell 45, obs(times) 3337
+dir_416_behavior <- readMat("data/Dir_Interact/608103_416/Day_1/Trial_002_0/binned_behavior.mat") 
+dir_416_behavior <- as.data.frame(t(dir_416_behavior$binned.behavior))
+
+dir_416_zscore <- readMat("data/Dir_Interact/608103_416/Day_1/Trial_002_0/binned_zscore.mat") %>% as.data.frame()
+dir_416 <- cbind(dir_416_behavior, dir_416_zscore)
+
+# Mouse 416, cell 15, obs(times) 3300
+dir_416_behavior <- readMat("data/Dir_Interact/608103_416/Day_1/Trial_002_0/binned_behavior.mat") 
+dir_416_behavior <- as.data.frame(t(dir_416_behavior$binned.behavior))
+
+dir_416_zscore <- readMat("data/Dir_Interact/608103_416/Day_1/Trial_002_0/binned_zscore.mat") %>% as.data.frame()
+dir_416 <- cbind(dir_416_behavior, dir_416_zscore)
+
+
+# Mouse 417, cell 43, obs(times) 3300
+dir_417_behavior <- readMat("data/Dir_Interact/608103_417/Day_1/Trial_002_0/binned_behavior.mat") 
+dir_417_behavior <- as.data.frame(t(dir_417_behavior$binned.behavior))
+
+dir_417_zscore <- readMat("data/Dir_Interact/608103_417/Day_1/Trial_002_0/binned_zscore.mat") %>% as.data.frame()
+dir_417 <- cbind(dir_417_behavior, dir_417_zscore)
+
+
+# Mouse 418, cell 34, obs(times) 3301
+dir_418_behavior <- readMat("data/Dir_Interact/608103_418/Day_1/Trial_002_0/binned_behavior.mat") 
+dir_418_behavior <- as.data.frame(t(dir_418_behavior$binned.behavior))
+
+dir_418_zscore <- readMat("data/Dir_Interact/608103_418/Day_1/Trial_002_0/binned_zscore.mat") %>% as.data.frame()
+dir_418 <- cbind(dir_418_behavior, dir_418_zscore)
+
+rm(dir_409_behavior, dir_409_zscore, dir_412_behavior, dir_412_zscore, dir_414_behavior, dir_414_zscore,
+   dir_416_behavior, dir_416_zscore, dir_417_behavior, dir_417_zscore, dir_418_behavior, dir_418_zscore)
+```
+
+```{r}
+# Elevated Zero Maze
+zm_409_behavior <- readMat("data/Zero_Maze/608034_409/Day_1/Trial_001_0/binned_behavior.mat")
+zm_409_behavior <- as.data.frame(t(zm_409_behavior$binned.behavior))
+
+zm_409_zscore <- readMat("data/Zero_Maze/608034_409/Day_1/Trial_001_0/binned_zscore.mat") %>% as.data.frame()
+zm_409 <- cbind(zm_409_behavior, zm_409_zscore)
+rm(zm_409_behavior, zm_409_zscore)
+
+
+zm_409 <- zm_409[-which(zm_409$V1 == 0 & zm_409$V2 == 0),]
+zm_409$label <- ifelse(zm_409$V1 == 0 & zm_409$V2 == 1, 0, 1)
+```
+
+
+## Exploratory Data Analysis
+
+```{r echo=FALSE}
+# correlation
+up_CorMatrix <- function(cor,p){ut <- upper.tri(cor)
+data.frame(row = rownames(cor)[row(cor)[ut]],
+           column = rownames(cor)[col(cor)[ut]], 
+           cor =(cor)[ut])}
+
+res.dir <- rcorr(as.matrix(dir_409[3:73]))
+cor_data.dir <- up_CorMatrix (res.dir$r)
+cor_data.dir <- subset(cor_data.dir, cor_data.dir$cor > 0.7)
+
+# my_group <- as.numeric(as.factor(substr(rownames(dir_409_zscore), 1 , 1)))
+# colSide <- brewer.pal(9, "Set1")[my_group]
+# colMain <- colorRampPalette(brewer.pal(8, "Blues"))(25)
+# heatmap(as.matrix(dir_409_zscore), Colv = NA, Rowv = NA, scale="column", RowSideColors=colSide, col=colMain)
+
+ggplot(dir_409[3:73], aes(x=1:4789, y=binned.zscore.1, color=binned.zscore.1)) + 
+  geom_line() + 
+  labs(x = "Time", y = "zscore", title = "Cell 1 from mouse 409 in the Direct Interacation")
+# table(dir_409_behavior)
+```
+
+```{r echo=FALSE}
+ggplot(zm_409[3:112], aes(x=1:6300, y=binned.zscore.1, color=binned.zscore.1)) + 
+  geom_line()+ 
+  labs(x = "Time", y = "zscore", title = "cell 1 from mouse 409 in the Elevated Zero Maze")
+```
+
+```{r echo=FALSE}
+# data$time *(100/length(data$time))
+var = c()
+mean = c()
+for (i in 3:74) {
+  var[i] = var(dir_409[1:3661, i])
+  mean[i] = mean(dir_409[1:3661, i])
+}
+# which.min(var)
+# which.max(var)
+for (i in c(which.min(var), which.max(var))) {
+  plot(dir_409[, i], type = "l", col = randomColor(i), 
+       ylim = c(-5, 10), main = paste("The two cells with the largest and smallest fluctuations from mouse 409"),
+       xlab = paste("time"), ylab = paste("z-score"))
+  par(new = TRUE)
+}
+```
+
+```{r echo=TRUE}
+for (i in c(which.min(mean), which.max(mean))) {
+  plot(dir_409[, i], type = "l", col = randomColor(1), ylim = c(-5, 10), 
+       main = paste("The two cells with the largest and smallest means"),
+       xlab = paste("time"), ylab = paste("z-score"))
+  par(new = TRUE)
+}
+```
+
+```{r echo=FALSE}
+col <- c("darkorange1","deepskyblue1","mediumseagreen","plum3","steelblue","mistyrose") %>% as.data.frame()
+# l <- c("409","412","414","416","417","418") %>% as.data.frame()
+# mice level
+dir_409$mean <- apply(dir_409[3:74], 1, mean)
+dir_412$mean <- apply(dir_412[3:84], 1, mean)
+dir_414$mean <- apply(dir_414[3:47], 1, mean)
+dir_416$mean <- apply(dir_416[3:17], 1, mean)
+dir_417$mean <- apply(dir_417[3:45], 1, mean)
+dir_418$mean <- apply(dir_418[3:36], 1, mean)
+
+dir <- data.frame(mean_409 = dir_409$mean[1:100], mean_412 = dir_412$mean[1:100], 
+                  mean_414 = dir_414$mean[1:100], mean_416 = dir_416$mean[1:100], 
+                  mean_417 = dir_417$mean[1:100], mean_418 = dir_418$mean[1:100])
+for (i in 1:ncol(dir)) {
+  plot(dir[, i], type = "l", col = col[i, ],
+       ylim = c(0, 2.5), main = paste("Z-Score of Six Mice During the first 100 units of time"),
+       xlab = paste("time"), ylab = paste("z-score"))
+  legend("topleft", c("409","412","414","416","417","418"), fill = col[1:6, ])
+  par(new = TRUE)
+}
+```
+
+
+## Model Fitting
+
+### Cross Validation
+
+```{r}
+# Cross Validation
+set.seed(1)
+
+# train <- sample(6184, 3092)
+train <- sample(c(TRUE, FALSE), nrow(zm_409), replace=TRUE, prob=c(0.7,0.3))
+train.X <- zm_409[train, 4:113]
+test.X <- zm_409[!train, 4:113]
+
+train.Behavior <- zm_409$label[train] #label
+test.Bahavior <- zm_409$label[!train]
+```
+
+### Feature Selection & Dimension Reduction 
+
+```{r echo=FALSE, include=FALSE}
+# Measured by the Kaiser-Meyer-Olkin (KMO) statistics, sampling adequacy predicts if data are likely to factor well, based on correlation and partial correlation.
+# If it´s value is lower then 0.6 then you should inspect those variables to decide which one should not take part of the factor analysis. To do so drop the indicator variables with the lowest individual KMO statistic values, until KMO overall rises above .60.
+
+# KMO(zm_409[, 4:113])  Overall MSA =  0.93
+pca <- prcomp(train.X, center = TRUE, scale = TRUE)
+# pca$x
+# component <- cumsum((pca$sdev) / (sum(pca$sdev))) #need to add till 68, remaining 0.8 component
+# com <- data.frame(number = 1:110,
+#                   component = component)
+# ggplot(data = com, aes(x = number, y = component)) + 
+#   scale_x_continuous(breaks = seq(0, 110, 10)) +
+#   geom_smooth(method = 'loess', formula = 'y ~ x', se = FALSE) +
+#   xlab("number") + ylab("component")
+# rawLoading <- pca$rotation[, ]
+# [0,100] or [1:2] variance?
+# scale?
+# pca1 <- princomp(zm_409[, 4:113], scores=TRUE, cor=TRUE)
+# pca1$loadings
+# summary(pca1)
+# loadings(pca1)
+# pca2 <- factanal(zm_409[, 4:113], factors = 50, rotation="varimax", scores="regression")
+pca2 <- factanal(train.X, factors = 5, rotation="varimax", scores="regression")
+# pca2$loadings
+pca_409 <- as.data.frame(as.matrix(zm_409[4:113]) %*% as.matrix(pca2$loadings))
+```
+
+### KNN
+
+```{r}
+# Cross Validation
+# set.seed(1)
+# 
+# train <- sample(6184, 3092)
+# train.X <- zm_409[train, 4:113]
+# test.X <- zm_409[-train, 4:113]
+# train.Behavior <- zm_409$label[train] #label
+# test.Bahavior <- zm_409$label[-train]
+```
+
+
+```{r}
+set.seed(1)
+
+# train <- sample(6184, 3092)
+train <- sample(c(TRUE, FALSE), nrow(zm_409), replace=TRUE, prob=c(0.7,0.3))
+train.X <- pca_409[train,]
+test.X <- pca_409[!train,]
+
+pca_409$label <- zm_409$label
+train.Behavior <- pca_409$label[train] #label
+test.Bahavior <- pca_409$label[!train]
+
+
+set.seed(1)
+# if k = 2
+knn.pred <- knn(train.X, test.X, train.Behavior, k = 2)
+table(knn.pred, test.Bahavior)
+
+accuracy <- (table(knn.pred, test.Bahavior)[1,1] + table(knn.pred, test.Bahavior)[2,2])/sum(table(knn.pred, test.Bahavior))
+accuracy
+(111+154)/1891
+```
+
+
+```{r}
+knn.error <- c()
+for (i in 1:50) {
+  # i = 1
+  knn.pred <- knn(train = train.X, test = test.X, cl = train.Behavior, k = i)
+  knn.error <- rbind(knn.error, c(i,1-(table(knn.pred,  test.Bahavior)[1,1] +
+                                               table(knn.pred,  test.Bahavior)[2,2])/1891))
+}
+knn.error <- data.frame(k = knn.error[, 1], error.rate = knn.error[, 2])
+knn.error$k <- as.numeric(knn.error$k)
+ggplot(data = knn.error, aes(x = k, y = error.rate)) + 
+  geom_smooth(method = 'loess', formula = 'y ~ x', se = FALSE) +
+  xlab("k") + ylab("test error rate")
+# k = 1 is the best model.
+```
+
+# Result
+
+# Citation
+
+
+
