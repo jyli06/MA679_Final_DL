@@ -77,6 +77,8 @@ df_for_training = df_train_ts[cols].astype("float")
 df_for_testing = df_test_ts[cols].astype("float")
 
 # another way to capture the training data without the behavior_1 column
+df_y_train = df_train_ts['behavior_1']
+df_y_test = df_test_ts['behavior_1']
 df_for_training = df_for_training.drop('behavior_1', axis=1)
 df_for_testing = df_for_testing.drop('behavior_1', axis=1)
 
@@ -109,7 +111,7 @@ n_past = 14  # Number of past time points we want to use to predict the future.
 #4328 refers to the number of data points and 111 refers to the columns (multi-variables).
 for i in range(n_past, len(df_for_training_scaled) - n_future +1):
     trainX.append(df_for_training_scaled[(i - n_past):i, 0:df_for_training_scaled.shape[1]])
-    trainY.append(df_for_training_scaled[(i + n_future - 1):(i + n_future), -1])
+    trainY.append(df_y_train[(i + n_future - 1):(i + n_future)])
 
 trainX, trainY = np.array(trainX), np.array(trainY)
 
@@ -121,7 +123,7 @@ testX = []
 testY = []
 for i in range(n_past, len(df_for_testing_scaled) - n_future +1):
     testX.append(df_for_testing_scaled[(i - n_past):i, 0:df_for_testing_scaled.shape[1]])
-    testY.append(df_for_testing_scaled[(i + n_future - 1):(i + n_future), -1])
+    testY.append(df_y_test[(i + n_future - 1):(i + n_future)])
 
 testX, testY = np.array(testX), np.array(testY)
 
@@ -190,7 +192,7 @@ import tensorflow as tf
 
 # define the model
 model = Sequential()
-model.add(LSTM(units=64, return_sequences=True, input_shape=(trainX.shape[1], trainX.shape[2]), activation='relu'))
+model.add(LSTM(units=64, return_sequences=True,input_shape=(trainX.shape[1], trainX.shape[2]), activation='relu'))
 model.add(LSTM(units=32, activation='relu', return_sequences=False))
 model.add(Dropout(0.2))
 model.add(Dense(trainY.shape[1], activation='sigmoid'))
@@ -199,7 +201,7 @@ model.compile(optimizer=Adam(learning_rate=0.01), loss = 'binary_crossentropy', 
 model.summary()
 
 # fit the model
-history = model.fit(trainX, trainY,validation_data=(testX, testY),epochs=10, batch_size=16, validation_freq=1)
+history = model.fit(trainX, trainY,validation_data=(testX, testY),epochs=40, batch_size=16, validation_freq=1)
 
 plt.plot(history.history['loss'], label='Training loss')
 plt.plot(history.history['val_loss'], label='Validation loss')
