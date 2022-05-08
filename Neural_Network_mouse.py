@@ -28,9 +28,9 @@ df_merge.head()
 
 
 # get column name in df_maze_behavior
-df_maze_behavior.columns.tolist()
+# df_maze_behavior.columns.tolist()
 
-#
+
 # get the first 70% rows as trainingset
 df_train = df_merge.sample(frac=0.7, random_state=1)
 
@@ -53,17 +53,18 @@ df_merge.index = pd.to_datetime(df_merge.index)
 # get the first 70% rows as trainingset
 # df_train_ts = df_merge.copy()
 df_train_ts = df_merge.iloc[:int(len(df_merge)*0.7)]
+df_train_ts.shape
 
 # get the x and y
-x_train_ts = df_train_ts.drop(['behavior_1'], axis=1)
-y_train_ts = df_train_ts['behavior_1']
+# x_train_ts = df_train_ts.drop(['behavior_1'], axis=1)
+# y_train_ts = df_train_ts['behavior_1']
 
 # get the rest 30% rows as testset
 df_test_ts = df_merge.iloc[int(len(df_merge)*0.7):]
 
 # get the x and y
-x_test_ts = df_test_ts.drop(['behavior_1'], axis=1)
-y_test_ts = df_test_ts['behavior_1']
+# x_test_ts = df_test_ts.drop(['behavior_1'], axis=1)
+# y_test_ts = df_test_ts['behavior_1']
 
 
 # change the data into time series
@@ -79,8 +80,8 @@ df_for_testing = df_test_ts[cols].astype("float")
 # another way to capture the training data without the behavior_1 column
 df_y_train = df_train_ts['behavior_1']
 df_y_test = df_test_ts['behavior_1']
-df_for_training = df_for_training.drop('behavior_1', axis=1)
-df_for_testing = df_for_testing.drop('behavior_1', axis=1)
+df_x_for_training = df_for_training.drop('behavior_1', axis=1)
+df_x_for_testing = df_for_testing.drop('behavior_1', axis=1)
 
 # df_for_plot=df_for_training.tail(5000)
 # df_for_plot.plot.line()
@@ -88,10 +89,10 @@ df_for_testing = df_for_testing.drop('behavior_1', axis=1)
 #LSTM uses sigmoid and tanh that are sensitive to magnitude so values need to be normalized
 # normalize the dataset
 scaler = StandardScaler()
-scaler1 = scaler.fit(df_for_training)
-df_for_training_scaled = scaler1.transform(df_for_training)
-scaler2 = scaler.fit(df_for_testing)
-df_for_testing_scaled = scaler2.transform(df_for_testing)
+scaler1 = scaler.fit(df_x_for_training)
+df_for_training_scaled = scaler1.transform(df_x_for_training)
+scaler2 = scaler.fit(df_x_for_testing)
+df_for_testing_scaled = scaler2.transform(df_x_for_testing)
 
 # if we don't use scale, we just transform the data into a numpy array
 # df_for_training_scaled = df_for_training.values
@@ -188,20 +189,27 @@ from tensorflow.keras.layers import Dense
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dropout
 from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.optimizers import SGD
 import tensorflow as tf
 
 # define the model
 model = Sequential()
 model.add(LSTM(units=64, return_sequences=True,input_shape=(trainX.shape[1], trainX.shape[2]), activation='relu'))
 model.add(LSTM(units=32, activation='relu', return_sequences=False))
-model.add(Dropout(0.2))
+model.add(Dropout(0.5))
 model.add(Dense(trainY.shape[1], activation='sigmoid'))
 
-model.compile(optimizer=Adam(learning_rate=0.01), loss = 'binary_crossentropy', metrics=['accuracy'])
+lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
+    initial_learning_rate=0.01,
+    decay_steps=100,
+    decay_rate=0.96,
+    staircase=True)
+
+model.compile(optimizer=SGD(learning_rate=0.01), loss = 'binary_crossentropy', metrics=['accuracy'])
 model.summary()
 
 # fit the model
-history = model.fit(trainX, trainY,validation_data=(testX, testY),epochs=40, batch_size=16, validation_freq=1)
+history = model.fit(trainX, trainY,validation_data=(testX, testY),epochs=15, batch_size=16, validation_freq=1)
 
 plt.plot(history.history['loss'], label='Training loss')
 plt.plot(history.history['val_loss'], label='Validation loss')
