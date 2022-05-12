@@ -268,7 +268,6 @@ table(knn.pred, test.Bahavior)
 
 accuracy <- (table(knn.pred, test.Bahavior)[1,1] + table(knn.pred, test.Bahavior)[2,2])/sum(table(knn.pred, test.Bahavior))
 accuracy
-(111+154)/1891
 ```
 
 
@@ -288,7 +287,51 @@ ggplot(data = knn.error, aes(x = k, y = error.rate)) +
 # k = 1 is the best model.
 ```
 
-# Result
+# change point detection
+```{r}
+zm_409 <- read.csv("code/zm_409.csv")    # cell 110 obs(times) 6300
+```
+
+```{r}
+zm_409$mean <- apply(zm_409[4:113], 1, mean)
+data <- zm_409[, c(2, 3, 114)]
+value.ts <- ts(data, frequency=1) #create subset by date and make it a time series
+
+plot(value.ts[, 3])
+```
+
+```{r}
+library(changepoint)
+mvalue <- cpt.mean(value.ts[, 3], method="PELT") #mean changepoints using PELT
+cpts(mvalue)
+plot(mvalue)
+
+vvalue = cpt.var(diff(value.ts[, 3]), method="PELT")
+cpts(vvalue)
+plot(vvalue)
+```
+
+```{r}
+vnvalue = cpt.var(diff(value.ts[, 3]), method="PELT", Q=6) 
+par(mfrow=c(2,1))
+plot(vvalue)
+plot(vnvalue)
+```
+
+```{r}
+for (i in 1:6299){
+  if (zm_409[i,2] == zm_409[i+1,2] & zm_409[i,3] == zm_409[i+1,3]){
+    zm_409$status[i] <- c("stable")
+  }
+  else{
+    zm_409$status[i] <- c("changeable")
+  }
+}
+table(zm_409$status)[2]/(table(zm_409$status)[1] +
+                            table(zm_409$status)[2])
+```
+
+
 
 # Citation
 
